@@ -17,10 +17,12 @@
 */
 
   #if HOVER_GEN == 1
-    //HardwareSerial oSerialSteer(PA3, PA2);  // long cable NOT 5V tolerant EFeru USART2 GPIO Configuration
-    HardwareSerial oSerialSteer(PB11, PB10);  // short cable 5VT EFeru USART3 GPIO Configuration
-    #undef DEBUG_UART
-    #define DEBUG_UART oSerialSteer
+    #ifdef DEBUG_UART
+      //HardwareSerial oSerialSteer(PA3, PA2);  // long cable NOT 5V tolerant EFeru USART2 GPIO Configuration
+      HardwareSerial oSerialSteer(PB11, PB10);  // short cable 5VT EFeru USART3 GPIO Configuration
+      #undef DEBUG_UART
+      #define DEBUG_UART oSerialSteer
+    #endif
   #endif
 
 
