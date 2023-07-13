@@ -10,11 +10,20 @@
 
 /*
 #ifdef DEBUG_UART // use Serial1 with differen rx/tx pins as DEBUG_UART
-  HardwareSerial oSerialSteer(PB7, PB6,0);  // 1 = uart_index = Serial2 ; 0 = uart_index = Serial1
+  HardwareSerial oSerialSteer(PB7, PB6,0);  // rx,tx  1 = uart_index = Serial2 ; 0 = uart_index = Serial1
   #undef DEBUG_UART
   #define DEBUG_UART oSerialSteer
 #endif
 */
+
+  #if HOVER_GEN == 1
+    //HardwareSerial oSerialSteer(PA3, PA2);  // long cable NOT 5V tolerant EFeru USART2 GPIO Configuration
+    HardwareSerial oSerialSteer(PB11, PB10);  // short cable 5VT EFeru USART3 GPIO Configuration
+    #undef DEBUG_UART
+    #define DEBUG_UART oSerialSteer
+  #endif
+
+
 
 // HallSensor(int hallA, int hallB , int hallC , int pp)  = HallSensor A, B and C pins , pp = pole pairs
 HallSensor sensor = HallSensor(HALL_A_PIN, HALL_B_PIN, HALL_C_PIN, BLDC_POLE_PAIRS);
@@ -94,6 +103,7 @@ void setup()
     motor.useMonitoring(rtt);
   #endif
 
+
   oKeepOn.Init();
   oKeepOn.Set(true);  // now we can release the on button :-)
   oOnOff.Init();
@@ -117,15 +127,17 @@ void setup()
   motor.linkSensor(&sensor);  // link the motor to the sensor
 
   driver.voltage_power_supply = 3.6 * BAT_CELLS; // power supply voltage [V]
-  driver.voltage_limit = 1.0 * driver.voltage_power_supply;   // 0.3 = keep well below 1.0 for testing !
-  motor.voltage_limit = driver.voltage_limit; // stupid bug to have two voltage_limit in different places
+  driver.voltage_limit = 0.3 * driver.voltage_power_supply;   // 0.3 = keep well below 1.0 for testing !
+  motor.voltage_limit = 0.5 * driver.voltage_limit; // stupid bug to have two voltage_limit in different places
   if (driver.init())
   {
+    OUTN("driver.init() succeeded :-)");
     driver.enable();
     Blink(2,oLedOrange);
   }
   else
   {
+    OUTN("driver.init() failed :-(");
     Blink(10);
     for(int i=0; i<6; i++)  aoBLDC[i].Init();  // set back to input to free the blocked motor
     return; // cancel simpleFOC setup
@@ -172,23 +184,30 @@ long iMicrosLast = 0;
 long iMicrosMax = 0;
 float fSpeedMax = 0;
 float fSpeedMin = 0;
-float fSpeedAvgMax = 13;
-float fSpeedAvgMin = -13;
+float fSpeedAvgMax = 0;
+float fSpeedAvgMin = 0;
 
 unsigned int iFOC = 0;
+float fAngleLatest = 0;
 
 unsigned long iOptimize = 0;
 float fOptimize = 0;
 /*
 float fZero_Step = 0.005;
 int iZero_Direction = 1;
+    #define HISTORY_GetMAngle 8
+    #define HISTORY_updateState 4
+
 */
 void loop()
 {
+  unsigned long iNow = millis();
   long iMicrosNow = _micros();
   long iMicros = iMicrosNow - iMicrosLast;
   if (iMicrosMax < iMicros) iMicrosMax = iMicros;
   iMicrosLast = iMicrosNow;
+
+  OUTN(iNow-iLoopStart)
 
   float fSpeed;
   if (motor.enabled)  // set by successful motor.init() at the end of setup()
@@ -204,21 +223,14 @@ void loop()
     // this function can be run at much lower frequency than loopFOC() function
     // You can also use motor.move() and set the motor.target in the code
     //float fSpeed = (1.1*driver.voltage_power_supply)  * (ABS(	(float)(((millis()-iLoopStart)/50 + 100) % 400) - 200) - 100)/100;
-    fSpeed = (1.5*driver.voltage_power_supply)  * (ABS(	(float)(((millis()-iLoopStart)/10 + 250) % 1000) - 500) - 250)/250;
+    fSpeed = (0.5*driver.voltage_power_supply)  * (ABS(	(float)(((millis()-iLoopStart)/10 + 250) % 1000) - 500) - 250)/250;
     //fSpeed = 3.0;
     motor.move(fSpeed);
   }
 
   iFOC++;
-  float fVelocity = sensor.getVelocity();
-  if (fSpeedMax < fVelocity) fSpeedMax = fVelocity;
-  if (fSpeedMin > fVelocity) fSpeedMin = fVelocity;
-  if (-fSpeed > driver.voltage_limit)  // will be clamped and therefore be constant
-    fSpeedAvgMax = 0.99 * fSpeedAvgMax + 0.01 * fVelocity;
-  else if (fSpeed > driver.voltage_limit)  // will be clamped and therefore be constant
-    fSpeedAvgMin = 0.99 * fSpeedAvgMin + 0.01 * fVelocity;
 
-  unsigned long iNow = millis();
+
 
   //aoLed[0].Set((iNow%1000) < 500);
   //aoLed[1].Set(aoHall[0].Get());
@@ -235,36 +247,82 @@ void loop()
     for (int i=0; i<HALL_Count; i++)  aoLed[i].Set(i==iPos);
   }
 
-  if (iTimeSend > iNow) return;
-  iTimeSend = iNow + TIME_SEND;
+/*
+  float fVelocity = sensor.getRpm() / driver.voltage_power_supply;
+  if (fSpeedMax < fVelocity) fSpeedMax = fVelocity;
+  if (fSpeedMin > fVelocity) fSpeedMin = fVelocity;
+  if (-fSpeed > driver.voltage_limit)  // will be clamped and therefore be constant
+    fSpeedAvgMax = 0.99 * fSpeedAvgMax + 0.01 * fVelocity;
+  else if (fSpeed > driver.voltage_limit)  // will be clamped and therefore be constant
+    fSpeedAvgMin = 0.99 * fSpeedAvgMin + 0.01 * fVelocity;
+*/
 
+  #if HOVER_GEN == 2
+    if (fAngleLatest ==  sensor.afAngle[sensor.iPosGetMAngle])
+      return;
+  #else
+    if (iTimeSend > iNow) return;
+    iTimeSend = iNow + TIME_SEND;
+  #endif
+
+  OUTN("TIME_SEND")
+  return;
 
   if (oOnOff.Get()) oKeepOn.Set(false);
 
 
 
   DEBUG( 
+    /*
     //OUT2T("SystemCoreClock",SystemCoreClock ) 
     OUT2T(fSpeedMin , fSpeedMax)
     OUT2T(fSpeedAvgMin , fSpeedAvgMax)
     OUT2T(abs(fSpeedMin+fSpeedMax), abs(fSpeedAvgMin+fSpeedAvgMax))
     //OUT2T("fLinAdd%",sensor.fLinAdd*100)
-    OUT2T(fOptimize*1000, motor.zero_electric_angle*1000)
+    //OUT2T(fOptimize*1000, motor.zero_electric_angle*1000)
     OUT2T( iMicros , iMicrosMax )
     //OUT2T( 1000.0f/iMicros , 1000.0f/(float)iMicrosMax )
-
+*/
 /*
     //for (int i=0; i<HALL_Count; i++)  OUT2T(i,aoHall[i].Get())
     OUT2T("angle",sensor.getAngle()) 
     OUT2T("speed",sensor.getVelocity())
-
-    OUT2T(sensor.fAngleOrgLast , sensor.fAngleOrg)
-    OUT2T(sensor.fAngleLinLast , sensor.fAngleLin)
-    //OUT2T("fAngleNew" , sensor.fAngleLagrange)
-    OUT2T(sensor.aiAngle[0] , sensor.aiTime[0]-sensor.aiTime[1])
-    OUT2T(sensor.iTimeSinceOld , sensor.iTimeSince) // sensor.fGradient1*1000
-    //OUT2T(sensor.fGradient1Last*1000,sensor.fGradient1*1000)
 */
+
+  #if HOVER_GEN == 2
+
+    OUT2T("KV",sensor.getRpm() / driver.voltage_power_supply )
+
+    OUT2T(iMicros,sensor.aiTimeDiff[sensor.iPosUpdateState] )
+
+    OUT2T(  fAngleLatest,sensor.afAngle[sensor.iPosGetMAngle] )
+
+    unsigned int iMicrosPredict = -1; // max
+    for(int i=HISTORY_GetMAngle-1; i>0; i--)
+    {
+      int j = (sensor.iPosGetMAngle+i)%HISTORY_GetMAngle;
+      if (sensor.aiMicrosPredict[j] > iMicrosPredict)
+        break;
+      if (sensor.abNoUpdate[j])
+      {
+        OUTI4(sensor.aiMicrosPredict[j]) OUT(":")
+        OUT(sensor.afAngleLin[j])
+      }
+      else
+      {
+        OUT(" hall_int ")
+      }
+      OUT(" ")
+      iMicrosPredict = sensor.aiMicrosPredict[j];
+    }
+    OUT("\t")
+  #endif
+    
+    //for(int i=0; i<HISTORY_updateState; i++)
+    //  OUT(sensor.aiTimeDiff[(sensor.iPosUpdateState+HISTORY_updateState-i)%HISTORY_updateState])OUT(",")
+    
+    OUTN()
+
     if (current_sense.initialized)
     {
       PhaseCurrent_s currents = current_sense.getPhaseCurrents();
@@ -273,8 +331,10 @@ void loop()
       OUT2T("B mA",currents.b*1000)  // milli Amps
       OUT2T("C mA",currents.c*1000)  // milli Amps
     }
-    OUTN(iFOC)
+    //OUTN(iFOC)
   )
+
+
 
   //fOptimize = -0.2  * (ABS(	(float)((iOptimize++ + 20) % 80) - 40) - 20)/20;
   //motor.zero_electric_angle = 2.09 + fOptimize;
@@ -282,7 +342,10 @@ void loop()
 
 
   iMicrosMax = fSpeedMax = fSpeedMin = iFOC = 0;
-  
+  #if HOVER_GEN == 2
+    fAngleLatest = sensor.afAngle[sensor.iPosGetMAngle];
+  #endif
+
   //Serial2.println("test of the master/slave uart rx/tx PA3/PA2"); // when using Serial1 as DEBUG_UART
 
 }

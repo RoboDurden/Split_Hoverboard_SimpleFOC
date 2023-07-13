@@ -77,13 +77,15 @@
 	#define OUT2T(s,i)	{SERIALDEBUG.print(s);SERIALDEBUG.print(": ");SERIALDEBUG.print(i);SERIALDEBUG.print("\t");}
 	#define OUT2N(s,i)	{SERIALDEBUG.print(s);SERIALDEBUG.print(": ");SERIALDEBUG.print(i);SERIALDEBUG.println();}
 	#define OUTN(s)	{SERIALDEBUG.println(s);}
+	#define OUTI4(i){if (i<10) SERIALDEBUG.print("   ");	else if (i<100)	SERIALDEBUG.print("  ");	else if (i<1000)	SERIALDEBUG.print(" ");	SERIALDEBUG.print(i);}
 #else
 	#define DEBUG(code)
 	#define OUT(s)
-	#define OUT2(s)
-	#define OUT2T(s)
-	#define OUT2N(s)
+	#define OUT2(s,i)
+	#define OUT2T(s,i)
+	#define OUT2N(s,i)
 	#define OUTN(s)
+	#define OUTI4(i)
 #endif
 
 #endif //  DEFINES_H

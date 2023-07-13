@@ -38,7 +38,7 @@
 
 // Self hold defines
 // Set output high to keep the latch ON. Set low to turn the board OFF
-#define SELF_HOLD_PIN PA5	// OFF_PIN
+#define SELF_HOLD_PIN TODO_PIN	// PA5	// OFF_PIN
 
 // Button defines
 // Usually used as INPUT but could be used as analog input if available on the pin to detect button press with low voltage batteries  

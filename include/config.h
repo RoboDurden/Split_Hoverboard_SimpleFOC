@@ -29,15 +29,15 @@
 #define BAT_CELLS         7     // battery number of cells. mostly 10 = 10s = 36V. Sometimes 7 = 7s = 25V
 
 // SEGGER RTT Debug
-#define DEBUG_STLINK rtt              // Uncomment to enable DEBUG over stlink dongle
+//#define DEBUG_STLINK rtt              // Uncomment to enable DEBUG over stlink dongle
 
 // log debug output over master/slave uart
-//#define DEBUG_UART  Serial2
+#define DEBUG_UART  Serial2
 #ifdef DEBUG_UART
   #define DEBUG_UART_BAUD   115200    // [-] Baud rate for HoverSerial (used to communicate with the hoverboard)
 #endif
 
-#define TIME_SEND           10000         // [ms] Sending time interval
+#define TIME_SEND           100         // [ms] Sending time interval
 
 
 #endif //  CONFIG_H
