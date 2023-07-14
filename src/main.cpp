@@ -129,8 +129,8 @@ void setup()
   motor.linkSensor(&sensor);  // link the motor to the sensor
 
   driver.voltage_power_supply = 3.6 * BAT_CELLS; // power supply voltage [V]
-  driver.voltage_limit = 0.3 * driver.voltage_power_supply;   // 0.3 = keep well below 1.0 for testing !
-  motor.voltage_limit = 0.5 * driver.voltage_limit; // stupid bug to have two voltage_limit in different places
+  driver.voltage_limit = 0.6 * driver.voltage_power_supply;   // 0.3 = keep well below 1.0 for testing !
+  motor.voltage_limit = 1 * driver.voltage_limit; // stupid bug to have two voltage_limit in different places
   if (driver.init())
   {
     OUTN("driver.init() succeeded :-)");
@@ -209,7 +209,7 @@ void loop()
   if (iMicrosMax < iMicros) iMicrosMax = iMicros;
   iMicrosLast = iMicrosNow;
 
-  OUTN(iNow-iLoopStart)
+  //OUTN(iNow-iLoopStart)
 
   float fSpeed;
   if (motor.enabled)  // set by successful motor.init() at the end of setup()
@@ -225,7 +225,7 @@ void loop()
     // this function can be run at much lower frequency than loopFOC() function
     // You can also use motor.move() and set the motor.target in the code
     //float fSpeed = (1.1*driver.voltage_power_supply)  * (ABS(	(float)(((millis()-iLoopStart)/50 + 100) % 400) - 200) - 100)/100;
-    fSpeed = (0.5*driver.voltage_power_supply)  * (ABS(	(float)(((millis()-iLoopStart)/10 + 250) % 1000) - 500) - 250)/250;
+    fSpeed = (-0.3*driver.voltage_power_supply)  * (ABS(	(float)(((millis()-iLoopStart)/10 + 250) % 1000) - 500) - 250)/250;
     //fSpeed = 3.0;
     motor.move(fSpeed);
   }
@@ -267,7 +267,9 @@ void loop()
     iTimeSend = iNow + TIME_SEND;
   #endif
 
-  OUTN("TIME_SEND")
+  OUT2T( iMicros , iMicrosMax )
+  OUTN(fSpeed)
+  iMicrosMax = fSpeedMax = fSpeedMin = iFOC = 0;
   return;
 
   if (oOnOff.Get()) oKeepOn.Set(false);

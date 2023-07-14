@@ -5,7 +5,9 @@
 
 #if defined(PLATFORMIO)
   #ifdef STM32F103RC
+    // WARNING do only use with 1-2 A current limiting power supply !!!
     #define HOVER_GEN   1
+    // too late here, has to be a build flag #define SIMPLEFOC_PWM_LOWSIDE_ACTIVE_HIGH false
     #define HOVER_LAYOUT	0
   #else
     #define HOVER_GEN   2
